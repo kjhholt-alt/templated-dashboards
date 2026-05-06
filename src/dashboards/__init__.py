@@ -12,6 +12,11 @@ from .ir import (
     Callout,
     Chart,
     ChartSeries,
+    Pipeline,
+    PipelineStage,
+    LinkGrid,
+    LinkItem,
+    CodeBlock,
     Tone,
     load,
     dump,
@@ -19,7 +24,7 @@ from .ir import (
 from .builder import Dashboard
 from .render import render, UnsupportedComponent, UnsupportedRenderer
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Dashboard",
@@ -34,6 +39,11 @@ __all__ = [
     "Callout",
     "Chart",
     "ChartSeries",
+    "Pipeline",
+    "PipelineStage",
+    "LinkGrid",
+    "LinkItem",
+    "CodeBlock",
     "Tone",
     "load",
     "dump",

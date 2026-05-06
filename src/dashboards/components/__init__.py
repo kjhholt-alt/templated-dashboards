@@ -13,6 +13,11 @@ from ..ir import (
     Callout,
     Chart,
     ChartSeries,
+    Pipeline,
+    PipelineStage,
+    LinkGrid,
+    LinkItem,
+    CodeBlock,
 )
 
 # Per-component shorthand modules (placeholders for future per-component logic).
@@ -27,4 +32,9 @@ __all__ = [
     "Callout",
     "Chart",
     "ChartSeries",
+    "Pipeline",
+    "PipelineStage",
+    "LinkGrid",
+    "LinkItem",
+    "CodeBlock",
 ]

@@ -28,8 +28,11 @@ from ..components import table as table_helpers
 from ..ir import (
     Callout,
     Chart,
+    CodeBlock,
     Dashboard,
     KPITile,
+    LinkGrid,
+    Pipeline,
     Section,
     StatusCard,
     Table,
@@ -167,6 +170,12 @@ def _emit_component(
         return _emit_callout(ws, row, comp, palette, Font, PatternFill)
     if isinstance(comp, Chart):
         return _emit_chart(ws, row, comp, palette, Font, PatternFill)
+    if isinstance(comp, Pipeline):
+        return _emit_pipeline(ws, row, comp, palette, Font, PatternFill)
+    if isinstance(comp, LinkGrid):
+        return _emit_link_grid(ws, row, comp, palette, Font, PatternFill)
+    if isinstance(comp, CodeBlock):
+        return _emit_code_block(ws, row, comp, palette, Font, PatternFill)
     return row
 
 
@@ -307,6 +316,94 @@ def _emit_chart(ws, row, c: Chart, palette, Font, PatternFill) -> int:
         pass
 
     return row - 1
+
+
+def _emit_pipeline(ws, row, c: Pipeline, palette, Font, PatternFill) -> int:
+    if c.caption:
+        cap = ws.cell(row=row, column=1, value=c.caption)
+        cap.font = Font(bold=True, color=palette["fg2"])
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        row += 1
+    last = row
+    for i, st in enumerate(c.stages, start=1):
+        ws.cell(row=row, column=1, value=f"{i:02d}").font = Font(
+            color=palette["fg3"], size=9
+        )
+        ws.cell(row=row, column=2, value=st.name).font = Font(
+            bold=True, color=palette["fg1"]
+        )
+        ws.cell(row=row, column=3, value=str(st.value)).font = Font(
+            bold=True,
+            color=palette.get(_state_to_tone(st.state), palette["fg0"]),
+        )
+        ws.cell(row=row, column=4, value=st.state).font = Font(
+            color=palette["fg2"], size=10
+        )
+        if st.detail:
+            ws.cell(row=row, column=5, value=st.detail).font = Font(
+                color=palette["fg2"], size=10
+            )
+        last = row
+        row += 1
+    return last
+
+
+def _state_to_tone(state: str) -> str:
+    if state == "ready":
+        return "good"
+    if state == "watching":
+        return "warn"
+    if state == "blocked":
+        return "bad"
+    return "neutral"
+
+
+def _emit_link_grid(ws, row, c: LinkGrid, palette, Font, PatternFill) -> int:
+    if c.caption:
+        cap = ws.cell(row=row, column=1, value=c.caption)
+        cap.font = Font(bold=True, color=palette["fg2"])
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        row += 1
+    last = row
+    for it in c.items:
+        if it.kicker:
+            ws.cell(row=row, column=1, value=it.kicker).font = Font(
+                color=palette["fg3"], size=9, italic=True
+            )
+        cell = ws.cell(row=row, column=2, value=it.label)
+        cell.font = Font(bold=True, color=palette["fg0"])
+        cell.hyperlink = it.href
+        cell.style = "Hyperlink"
+        if it.detail:
+            ws.cell(row=row, column=3, value=it.detail).font = Font(
+                color=palette["fg2"], size=10
+            )
+        if it.ok is True:
+            ws.cell(row=row, column=6, value="OK").font = Font(
+                color=palette["good"], bold=True, size=9
+            )
+        elif it.ok is False:
+            ws.cell(row=row, column=6, value="MISSING").font = Font(
+                color=palette["bad"], bold=True, size=9
+            )
+        last = row
+        row += 1
+    return last
+
+
+def _emit_code_block(ws, row, c: CodeBlock, palette, Font, PatternFill) -> int:
+    if c.caption:
+        cap = ws.cell(row=row, column=1, value=c.caption)
+        cap.font = Font(bold=True, color=palette["fg2"])
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        row += 1
+    cell = ws.cell(row=row, column=1, value=c.text or "")
+    cell.font = Font(name="Consolas", size=9, color=palette["fg2"])
+    cell.alignment = __import__(
+        "openpyxl.styles", fromlist=["Alignment"]
+    ).Alignment(wrap_text=True, vertical="top")
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+    return row
 
 
 __all__ = ["render_excel"]

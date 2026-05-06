@@ -86,8 +86,62 @@ class Chart(_Strict):
     caption: Optional[str] = None
 
 
+PipelineState = Literal["ready", "watching", "blocked", "shipped", "neutral"]
+
+
+class PipelineStage(_Strict):
+    name: str
+    value: Union[str, float, int]
+    state: PipelineState = "neutral"
+    detail: Optional[str] = None
+
+
+class Pipeline(_Strict):
+    """Numbered horizontal stages with state per stage.
+
+    Useful for funnels (Lead -> Approve -> Visit -> ... -> Close),
+    deploy pipelines, or any ordered process.
+    """
+
+    type: Literal["pipeline"] = "pipeline"
+    stages: List[PipelineStage]
+    caption: Optional[str] = None
+
+
+class LinkItem(_Strict):
+    label: str
+    href: str
+    kicker: Optional[str] = None
+    detail: Optional[str] = None
+    tone: Tone = "neutral"
+    ok: Optional[bool] = None
+
+
+class LinkGrid(_Strict):
+    """A grid or chip-row of links, optionally with health flags.
+
+    ``style="card"`` renders large card tiles (kicker + label + detail).
+    ``style="chip"`` renders compact pill chips with optional ok/missing
+    badges driven by ``ok``.
+    """
+
+    type: Literal["link_grid"] = "link_grid"
+    items: List[LinkItem]
+    style: Literal["card", "chip"] = "card"
+    caption: Optional[str] = None
+
+
+class CodeBlock(_Strict):
+    """Pre-formatted text block. Used for git status, log tails, etc."""
+
+    type: Literal["code_block"] = "code_block"
+    text: str
+    language: Optional[str] = None
+    caption: Optional[str] = None
+
+
 Component = Annotated[
-    Union[StatusCard, KPITile, Table, Timeline, Callout, Chart],
+    Union[StatusCard, KPITile, Table, Timeline, Callout, Chart, Pipeline, LinkGrid, CodeBlock],
     Field(discriminator="type"),
 ]
 

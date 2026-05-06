@@ -15,8 +15,11 @@ from ..components import table as table_helpers
 from ..ir import (
     Callout,
     Chart,
+    CodeBlock,
     Dashboard,
     KPITile,
+    LinkGrid,
+    Pipeline,
     Section,
     StatusCard,
     Table,
@@ -65,6 +68,12 @@ def _component(c) -> str:
         return _callout(c)
     if isinstance(c, Chart):
         return _chart_fallback(c)
+    if isinstance(c, Pipeline):
+        return _pipeline(c)
+    if isinstance(c, LinkGrid):
+        return _link_grid(c)
+    if isinstance(c, CodeBlock):
+        return _code_block(c)
     return f"<!-- unknown component: {type(c).__name__} -->"
 
 
@@ -121,6 +130,52 @@ def _chart_fallback(c: Chart) -> str:
     series = ", ".join(s.label for s in c.series)
     cap = f" - {c.caption}" if c.caption else ""
     return f"> **[chart:{c.kind}]** {series}{cap} _(chart omitted in markdown)_"
+
+
+_STATE_GLYPH = {
+    "ready": "[+]",
+    "watching": "[~]",
+    "blocked": "[!]",
+    "shipped": "[=]",
+    "neutral": "[ ]",
+}
+
+
+def _pipeline(c: Pipeline) -> str:
+    out: List[str] = []
+    if c.caption:
+        out.append(f"**{c.caption}**")
+        out.append("")
+    for i, st in enumerate(c.stages, start=1):
+        glyph = _STATE_GLYPH.get(st.state, "[ ]")
+        line = f"{i:02d}. {glyph} **{st.name}** = `{st.value}`"
+        if st.detail:
+            line += f" - {st.detail}"
+        out.append(line)
+    return "\n".join(out)
+
+
+def _link_grid(c: LinkGrid) -> str:
+    out: List[str] = []
+    if c.caption:
+        out.append(f"**{c.caption}**")
+        out.append("")
+    for it in c.items:
+        kicker = f"_{it.kicker}_ - " if it.kicker else ""
+        flag = ""
+        if it.ok is True:
+            flag = " [OK]"
+        elif it.ok is False:
+            flag = " [MISSING]"
+        suffix = f" - {it.detail}" if it.detail else ""
+        out.append(f"- {kicker}[{it.label}]({it.href}){flag}{suffix}")
+    return "\n".join(out)
+
+
+def _code_block(c: CodeBlock) -> str:
+    lang = c.language or ""
+    cap = f"**{c.caption}**\n\n" if c.caption else ""
+    return f"{cap}```{lang}\n{c.text}\n```"
 
 
 __all__ = ["render_markdown"]

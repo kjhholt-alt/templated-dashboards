@@ -164,6 +164,46 @@ class Dashboard:
         )
         return self
 
+    def pipeline(
+        self,
+        stages: Iterable[dict],
+        *,
+        caption: Optional[str] = None,
+    ) -> "Dashboard":
+        self._require_section("pipeline")
+        st = [
+            ir_mod.PipelineStage(**s) if isinstance(s, dict) else s for s in stages
+        ]
+        self._current.add(ir_mod.Pipeline(stages=st, caption=caption))
+        return self
+
+    def link_grid(
+        self,
+        items: Iterable[dict],
+        *,
+        style: str = "card",
+        caption: Optional[str] = None,
+    ) -> "Dashboard":
+        self._require_section("link_grid")
+        it = [ir_mod.LinkItem(**i) if isinstance(i, dict) else i for i in items]
+        self._current.add(
+            ir_mod.LinkGrid(items=it, style=style, caption=caption)
+        )
+        return self
+
+    def code_block(
+        self,
+        text: str,
+        *,
+        language: Optional[str] = None,
+        caption: Optional[str] = None,
+    ) -> "Dashboard":
+        self._require_section("code_block")
+        self._current.add(
+            ir_mod.CodeBlock(text=text, language=language, caption=caption)
+        )
+        return self
+
     # ------------------------------------------------------------------
     # finalisation
     # ------------------------------------------------------------------

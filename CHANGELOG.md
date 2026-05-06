@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.2.0 — 2026-05-05
+
+### New components for war-room rebuild
+- `pipeline` — numbered horizontal stages with per-stage state
+  (`ready` / `watching` / `blocked` / `shipped` / `neutral`). Funnel
+  rendering for war-room, deploy pipelines, any ordered process.
+- `link_grid` — grid of cards or row of chips. Chip mode supports an
+  `ok` flag that renders OK / MISSING health badges. Card mode supports
+  `kicker`, `detail`, and `tone`. Powers the war-room board rail and
+  the bottom diag link list in one shape.
+- `code_block` — pre-formatted text panel with optional caption /
+  language. Powers war-room "dirty workspace" git-status tail.
+
+### Renderer support
+- HTML: full Palantir styling for all three new components, including
+  responsive collapse on narrow viewports.
+- Markdown: numbered stages with state glyphs, link list with health
+  flags, fenced code block honouring `language`.
+- Excel: pipeline stages render as bordered rows with tone-coloured
+  values; link grid uses native hyperlinks; code block uses Consolas
+  with wrap. Caption rows where present.
+- PDF: piggybacks on HTML (weasyprint) or markdown (reportlab fallback)
+  — both already cover the new components.
+
+### Tests
+- 4 new tests in `test_renderers.py`: HTML structural classes, markdown
+  output shape, Excel smoke, JSON-IR roundtrip through `load()`.
+- Total: 40 passing.
+
 ## 0.1.0 — 2026-05-04
 
 Initial release.
