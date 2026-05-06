@@ -19,10 +19,12 @@ from ..ir import (
     Callout,
     Chart,
     CodeBlock,
+    CoverPage,
     Dashboard,
     KPITile,
     LinkGrid,
     Pipeline,
+    ROISummary,
     Section,
     StatusCard,
     Table,
@@ -98,7 +100,19 @@ def _render_section(section: Section) -> str:
         )
     parts.append("</div>")
 
-    layout_class = "section-grid" if section.layout == "grid" else "section-stack"
+    # v0.3.0: support fixed-column kpi_grid layouts. HTML maps each to a
+    # CSS class consumed by the theme; renderers without col-aware layouts
+    # fall through to section-stack.
+    if section.layout == "grid":
+        layout_class = "section-grid"
+    elif section.layout == "kpi_grid_2col":
+        layout_class = "section-kpi-grid section-kpi-grid-2"
+    elif section.layout == "kpi_grid_3col":
+        layout_class = "section-kpi-grid section-kpi-grid-3"
+    elif section.layout == "kpi_grid_4col":
+        layout_class = "section-kpi-grid section-kpi-grid-4"
+    else:
+        layout_class = "section-stack"
     parts.append(f'<div class="{layout_class}">')
     for c in section.components:
         parts.append(_render_component(c))
@@ -126,6 +140,10 @@ def _render_component(c) -> str:
         return _link_grid(c)
     if isinstance(c, CodeBlock):
         return _code_block(c)
+    if isinstance(c, CoverPage):
+        return _cover_page(c)
+    if isinstance(c, ROISummary):
+        return _roi_summary(c)
     return f"<!-- unknown component: {type(c).__name__} -->"
 
 
@@ -163,10 +181,16 @@ def _kpi(c: KPITile) -> str:
 def _table(c: Table) -> str:
     rows = table_helpers.normalise_rows(c)
     head = "".join(f"<th>{html.escape(h)}</th>" for h in c.headers)
+    tones = c.cell_tones or []
     body_rows = []
-    for row in rows:
-        cells = "".join(f"<td>{html.escape(cell)}</td>" for cell in row)
-        body_rows.append(f"<tr>{cells}</tr>")
+    for r_idx, row in enumerate(rows):
+        cells_html = []
+        tone_row = tones[r_idx] if r_idx < len(tones) else []
+        for c_idx, cell in enumerate(row):
+            tone = tone_row[c_idx] if c_idx < len(tone_row) else None
+            cls = f' class="tone-{tone}"' if tone else ""
+            cells_html.append(f"<td{cls}>{html.escape(cell)}</td>")
+        body_rows.append(f"<tr>{''.join(cells_html)}</tr>")
     cap = ""
     if c.caption:
         cap = f'<div class="tbl-caption">{html.escape(c.caption)}</div>'
@@ -348,6 +372,65 @@ def _code_block(c: CodeBlock) -> str:
     return (
         f'<div class="cb-wrap">{cap}'
         f'<pre class="cb"{lang}>{body}</pre></div>'
+    )
+
+
+def _cover_page(c: CoverPage) -> str:
+    """Cover page: banner with logo initials + big title + subtitle + meta block."""
+    initials = html.escape(c.logo_initials or "")
+    title = html.escape(c.title)
+    subtitle_html = ""
+    if c.subtitle:
+        subtitle_html = f'<div class="cp-subtitle">{html.escape(c.subtitle)}</div>'
+    meta_rows = []
+    if c.prepared_for:
+        meta_rows.append(
+            f'<div class="cp-meta-row"><span class="cp-meta-label">PREPARED FOR</span>'
+            f'<span class="cp-meta-value">{html.escape(c.prepared_for)}</span></div>'
+        )
+    if c.prepared_by:
+        meta_rows.append(
+            f'<div class="cp-meta-row"><span class="cp-meta-label">PREPARED BY</span>'
+            f'<span class="cp-meta-value">{html.escape(c.prepared_by)}</span></div>'
+        )
+    if c.version:
+        meta_rows.append(
+            f'<div class="cp-meta-row"><span class="cp-meta-label">VERSION</span>'
+            f'<span class="cp-meta-value">{html.escape(c.version)}</span></div>'
+        )
+    logo_html = ""
+    if initials:
+        logo_html = f'<div class="cp-logo">{initials}</div>'
+    return (
+        '<div class="cover-page">'
+        f"{logo_html}"
+        f'<div class="cp-title">{title}</div>'
+        f"{subtitle_html}"
+        f'<div class="cp-meta">{"".join(meta_rows)}</div>'
+        "</div>"
+    )
+
+
+def _roi_summary(c: ROISummary) -> str:
+    """ROI banner: emphasize multiplier; show investment / monthly / annual / payback."""
+
+    def _fmt_usd(v: float) -> str:
+        return f"${v:,.0f}"
+
+    return (
+        '<div class="roi-summary">'
+        f'<div class="roi-multiplier">{html.escape(c.multiplier)}</div>'
+        '<div class="roi-grid">'
+        f'<div class="roi-cell"><span class="roi-cell-label">INVESTMENT</span>'
+        f'<span class="roi-cell-value">{_fmt_usd(c.investment_usd)}</span></div>'
+        f'<div class="roi-cell"><span class="roi-cell-label">MONTHLY RECOVERY</span>'
+        f'<span class="roi-cell-value">{_fmt_usd(c.monthly_recovery_usd)}</span></div>'
+        f'<div class="roi-cell"><span class="roi-cell-label">ANNUAL RECOVERY</span>'
+        f'<span class="roi-cell-value">{_fmt_usd(c.annual_recovery_usd)}</span></div>'
+        f'<div class="roi-cell"><span class="roi-cell-label">PAYBACK</span>'
+        f'<span class="roi-cell-value">{c.payback_months:.1f} months</span></div>'
+        "</div>"
+        "</div>"
     )
 
 

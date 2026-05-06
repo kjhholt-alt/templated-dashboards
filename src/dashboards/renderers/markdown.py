@@ -16,10 +16,12 @@ from ..ir import (
     Callout,
     Chart,
     CodeBlock,
+    CoverPage,
     Dashboard,
     KPITile,
     LinkGrid,
     Pipeline,
+    ROISummary,
     Section,
     StatusCard,
     Table,
@@ -74,7 +76,43 @@ def _component(c) -> str:
         return _link_grid(c)
     if isinstance(c, CodeBlock):
         return _code_block(c)
+    if isinstance(c, CoverPage):
+        return _cover_page(c)
+    if isinstance(c, ROISummary):
+        return _roi_summary(c)
     return f"<!-- unknown component: {type(c).__name__} -->"
+
+
+def _cover_page(c: CoverPage) -> str:
+    """Markdown: # title + _subtitle_ + key-value lines."""
+    lines: List[str] = []
+    if c.logo_initials:
+        lines.append(f"```")
+        lines.append(f" [{c.logo_initials}] ")
+        lines.append(f"```")
+    lines.append(f"# {c.title}")
+    if c.subtitle:
+        lines.append(f"_{c.subtitle}_")
+    lines.append("")
+    if c.prepared_for:
+        lines.append(f"**Prepared for:** {c.prepared_for}  ")
+    if c.prepared_by:
+        lines.append(f"**Prepared by:** {c.prepared_by}  ")
+    if c.version:
+        lines.append(f"**Version:** {c.version}")
+    lines.append("---")
+    return "\n".join(lines)
+
+
+def _roi_summary(c: ROISummary) -> str:
+    """Markdown: bullet list with multiplier emphasized."""
+    return (
+        f"### **{c.multiplier} ROI**\n"
+        f"- **Investment:** ${c.investment_usd:,.0f}\n"
+        f"- **Monthly recovery:** ${c.monthly_recovery_usd:,.0f}\n"
+        f"- **Annual recovery:** ${c.annual_recovery_usd:,.0f}\n"
+        f"- **Payback:** {c.payback_months:.1f} months"
+    )
 
 
 def _status(c: StatusCard) -> str:

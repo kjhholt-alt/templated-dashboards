@@ -29,10 +29,12 @@ from ..ir import (
     Callout,
     Chart,
     CodeBlock,
+    CoverPage,
     Dashboard,
     KPITile,
     LinkGrid,
     Pipeline,
+    ROISummary,
     Section,
     StatusCard,
     Table,
@@ -145,6 +147,16 @@ def _emit_section(
         row += 1
     row += 1
 
+    # v0.3.0: kpi_grid_*col layouts arrange KPI tiles into N-column rows in
+    # Excel, instead of collapsing each KPI to one column wide as the default
+    # stack does. Non-KPI components fall through to default emission.
+    kpi_cols = _kpi_grid_cols(section.layout)
+    if kpi_cols and all(isinstance(comp, KPITile) for comp in section.components):
+        row = _emit_kpi_grid(
+            ws, row, section.components, kpi_cols, palette, Font, PatternFill,
+        )
+        return row
+
     for comp in section.components:
         row = _emit_component(
             ws, row, comp, palette, thin, border_bottom,
@@ -152,6 +164,45 @@ def _emit_section(
         )
         row += 1
     return row
+
+
+def _kpi_grid_cols(layout: str) -> int:
+    """Map ``section.layout`` to the column count for kpi_grid layouts."""
+    return {
+        "kpi_grid_2col": 2,
+        "kpi_grid_3col": 3,
+        "kpi_grid_4col": 4,
+    }.get(layout, 0)
+
+
+def _emit_kpi_grid(
+    ws, row, kpis, cols: int, palette, Font, PatternFill,
+) -> int:
+    """Lay out KPIs in fixed N-column rows. Each KPI takes 2 cols (label +
+    value combined into label-row + value-row). Returns next free row."""
+    if not kpis:
+        return row
+    # Each KPI block is 3 rows tall (label / value / delta-or-blank).
+    block_rows = 3
+    # Each KPI block is ceil(6/cols) cells wide so the merged section title
+    # spanning 6 cols still aligns with the grid.
+    width = max(1, 6 // cols)
+    for i, k in enumerate(kpis):
+        slot = i % cols
+        if slot == 0 and i > 0:
+            row += block_rows + 1  # extra blank between rows
+        col = 1 + slot * width
+        # label
+        lbl = ws.cell(row=row, column=col, value=k.label)
+        lbl.font = Font(size=9, color=palette["fg2"], bold=True)
+        # value
+        val = ws.cell(row=row + 1, column=col, value=_kpi_native(k))
+        val.font = Font(size=18, bold=True, color=palette.get(k.tone, palette["fg0"]))
+        # delta
+        if k.delta:
+            d = ws.cell(row=row + 2, column=col, value=k.delta)
+            d.font = Font(size=9, color=palette["fg2"])
+    return row + block_rows + 1
 
 
 def _emit_component(
@@ -176,6 +227,10 @@ def _emit_component(
         return _emit_link_grid(ws, row, comp, palette, Font, PatternFill)
     if isinstance(comp, CodeBlock):
         return _emit_code_block(ws, row, comp, palette, Font, PatternFill)
+    if isinstance(comp, CoverPage):
+        return _emit_cover_page(ws, row, comp, palette, Font, PatternFill)
+    if isinstance(comp, ROISummary):
+        return _emit_roi_summary(ws, row, comp, palette, Font, PatternFill)
     return row
 
 
@@ -235,15 +290,75 @@ def _emit_table(ws, row, c: Table, palette, Font, PatternFill, border_bottom) ->
     row += 1
 
     rows = table_helpers.normalise_rows(c)
-    for r_data in rows:
+    tones = c.cell_tones or []
+    for r_idx, r_data in enumerate(rows):
+        tone_row = tones[r_idx] if r_idx < len(tones) else []
         for i, val in enumerate(r_data, start=1):
-            ws.cell(row=row, column=i, value=val).border = border_bottom
+            cell = ws.cell(row=row, column=i, value=val)
+            cell.border = border_bottom
+            # v0.3.0: per-cell tone hint -> coloured fill on body cells
+            tone = tone_row[i - 1] if (i - 1) < len(tone_row) else None
+            if tone in ("good", "warn", "bad", "neutral"):
+                cell.fill = _tone_fill(palette, tone, PatternFill)
         row += 1
 
     # Freeze table header by setting freeze_panes if first table on sheet.
     if ws.freeze_panes is None:
         ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
     return row - 1
+
+
+def _emit_cover_page(ws, row, c: CoverPage, palette, Font, PatternFill) -> int:
+    """Cover page: title + subtitle + meta block at top of sheet."""
+    if c.logo_initials:
+        cell = ws.cell(row=row, column=1, value=c.logo_initials)
+        cell.font = Font(size=24, bold=True, color=palette.get("warn", palette["fg0"]))
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
+        row += 1
+    title = ws.cell(row=row, column=1, value=c.title)
+    title.font = Font(size=22, bold=True, color=palette["fg0"])
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+    row += 1
+    if c.subtitle:
+        sub = ws.cell(row=row, column=1, value=c.subtitle)
+        sub.font = Font(size=11, italic=True, color=palette["fg2"])
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        row += 1
+    row += 1
+    for label, value in (
+        ("PREPARED FOR", c.prepared_for),
+        ("PREPARED BY", c.prepared_by),
+        ("VERSION", c.version),
+    ):
+        if not value:
+            continue
+        lbl = ws.cell(row=row, column=1, value=label)
+        lbl.font = Font(size=9, bold=True, color=palette["fg3"])
+        val = ws.cell(row=row, column=2, value=value)
+        val.font = Font(size=10, color=palette["fg1"])
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+        row += 1
+    return row
+
+
+def _emit_roi_summary(ws, row, c: ROISummary, palette, Font, PatternFill) -> int:
+    """ROI summary: multiplier emphasized + 4 figures."""
+    mult = ws.cell(row=row, column=1, value=c.multiplier + " ROI")
+    mult.font = Font(size=22, bold=True, color=palette["good"])
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+    row += 1
+    for label, value in (
+        ("Investment", f"${c.investment_usd:,.0f}"),
+        ("Monthly recovery", f"${c.monthly_recovery_usd:,.0f}"),
+        ("Annual recovery", f"${c.annual_recovery_usd:,.0f}"),
+        ("Payback (months)", f"{c.payback_months:.1f}"),
+    ):
+        lbl = ws.cell(row=row, column=1, value=label)
+        lbl.font = Font(size=10, color=palette["fg2"])
+        val = ws.cell(row=row, column=2, value=value)
+        val.font = Font(size=11, bold=True, color=palette["fg0"])
+        row += 1
+    return row
 
 
 def _emit_timeline(ws, row, c: Timeline, palette, Font, PatternFill) -> int:
