@@ -102,6 +102,56 @@ fallbacks.
 Renderers other than HTML emit a `callout` saying "chart omitted in
 this format". This is documented degradation, not a bug.
 
+### `pipeline`
+
+Numbered horizontal stages with state per stage. Useful for funnels,
+deploy pipelines, and any ordered process.
+
+| Field      | Type              | Required | Description |
+|------------|-------------------|----------|-------------|
+| `stages`   | `PipelineStage[]` | yes      | At least one. |
+| `caption`  | string            | no       | |
+
+`PipelineStage`:
+
+| Field    | Type            | Required | Description |
+|----------|-----------------|----------|-------------|
+| `name`   | string          | yes      | Stage label. |
+| `value`  | string / number | yes      | Stage count or display string. |
+| `state`  | `"ready"`/`"watching"`/`"blocked"`/`"shipped"`/`"neutral"` | no | Default `"neutral"`. |
+| `detail` | string          | no       | Optional hint. |
+
+### `link_grid`
+
+A grid (cards) or row (chips) of links, optionally with health flags.
+
+| Field     | Type         | Required | Description |
+|-----------|--------------|----------|-------------|
+| `items`   | `LinkItem[]` | yes      | At least one. |
+| `style`   | `"card"`/`"chip"` | no  | Default `"card"`. |
+| `caption` | string       | no       | |
+
+`LinkItem`:
+
+| Field    | Type   | Required | Description |
+|----------|--------|----------|-------------|
+| `label`  | string | yes      | Display text. |
+| `href`   | string | yes      | URL (relative ok). |
+| `kicker` | string | no       | Small uppercase prefix. |
+| `detail` | string | no       | Sub-label / description. |
+| `tone`   | `"good"`/`"warn"`/`"bad"`/`"neutral"` | no | Card accent. |
+| `ok`     | boolean| no       | When set, chip style adds OK / MISSING badge. |
+
+### `code_block`
+
+Pre-formatted text. Used for git status tails, log excerpts, etc.
+
+| Field      | Type   | Required | Description |
+|------------|--------|----------|-------------|
+| `text`     | string | yes      | Body. Auto-escaped. |
+| `language` | string | no       | Hint for markdown fences. |
+| `caption`  | string | no       | |
+
 ## Rules
 
 1. Renderers MUST be pure functions of IR.

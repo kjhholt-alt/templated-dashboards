@@ -156,3 +156,111 @@ def test_theme_light_renders():
     )
     html = render(dash, "html")
     assert "var(--fg-0)" in html  # css var present from theme
+
+
+def _extras_dashboard():
+    return (
+        Dashboard("Extras", subtitle="pipeline + link_grid + code_block")
+        .section("Funnel")
+            .pipeline(
+                [
+                    {"name": "Lead", "value": 12, "state": "ready"},
+                    {"name": "Approve", "value": 0, "state": "shipped"},
+                    {"name": "Visit", "value": 220, "state": "watching"},
+                    {"name": "Close", "value": 0, "state": "blocked"},
+                ],
+                caption="lead to close",
+            )
+        .section("Boards")
+            .link_grid(
+                [
+                    {"label": "Mission Control", "href": "mc.html",
+                     "kicker": "ops", "detail": "rollup view"},
+                    {"label": "Trello", "href": "t.html", "tone": "good"},
+                ],
+                style="card",
+                caption="quick boards",
+            )
+        .section("Quick links")
+            .link_grid(
+                [
+                    {"label": "Runlog", "href": "RUNLOG.md", "ok": True},
+                    {"label": "Missing", "href": "MISSING.md", "ok": False},
+                ],
+                style="chip",
+            )
+        .section("Diag")
+            .code_block("M file.txt\n?? new.txt", language="diff",
+                        caption="git status")
+        .build()
+    )
+
+
+def test_pipeline_link_grid_code_block_html():
+    dash = _extras_dashboard()
+    html = render(dash, "html")
+    # pipeline classes
+    assert "pl-stage" in html
+    assert "state-ready" in html
+    assert "state-blocked" in html
+    # link_grid card style
+    assert "lg-card" in html
+    # link_grid chip style with health badges
+    assert "lg-chip ok" in html
+    assert "lg-chip missing" in html
+    assert "MISSING" in html
+    # code block
+    assert "<pre" in html
+    assert "git status" in html
+
+
+def test_pipeline_link_grid_code_block_markdown():
+    dash = _extras_dashboard()
+    md = render(dash, "markdown")
+    assert "**Lead**" in md
+    assert "[Runlog](RUNLOG.md)" in md
+    assert "[OK]" in md
+    assert "[MISSING]" in md
+    assert "```diff" in md
+
+
+def test_extras_excel_smoke(tmp_path: Path):
+    pytest.importorskip("openpyxl")
+    dash = _extras_dashboard()
+    out = render(dash, "excel", out=tmp_path / "x.xlsx")
+    assert out.exists() and out.stat().st_size > 0
+
+
+def test_extras_load_validates():
+    raw = {
+        "version": "1",
+        "title": "T",
+        "sections": [{
+            "title": "S",
+            "components": [
+                {
+                    "type": "pipeline",
+                    "stages": [
+                        {"name": "A", "value": 1, "state": "ready"},
+                        {"name": "B", "value": 2},
+                    ],
+                },
+                {
+                    "type": "link_grid",
+                    "style": "chip",
+                    "items": [
+                        {"label": "X", "href": "x.html", "ok": True},
+                    ],
+                },
+                {
+                    "type": "code_block",
+                    "text": "hello",
+                },
+            ],
+        }],
+    }
+    dash = load(raw)
+    out = render(dash, "html")
+    assert "pl-stage" in out
+    assert "lg-chip" in out
+    assert "<pre" in out

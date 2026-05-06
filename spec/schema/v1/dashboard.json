@@ -41,7 +41,10 @@
         { "$ref": "#/$defs/table" },
         { "$ref": "#/$defs/timeline" },
         { "$ref": "#/$defs/callout" },
-        { "$ref": "#/$defs/chart" }
+        { "$ref": "#/$defs/chart" },
+        { "$ref": "#/$defs/pipeline" },
+        { "$ref": "#/$defs/link_grid" },
+        { "$ref": "#/$defs/code_block" }
       ]
     },
     "status_card": {
@@ -146,6 +149,68 @@
             }
           }
         }
+      }
+    },
+    "pipeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "stages"],
+      "properties": {
+        "type": { "const": "pipeline" },
+        "caption": { "type": "string" },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "value"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "value": { "type": ["string", "number"] },
+              "state": { "enum": ["ready", "watching", "blocked", "shipped", "neutral"] },
+              "detail": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "link_grid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "items"],
+      "properties": {
+        "type": { "const": "link_grid" },
+        "caption": { "type": "string" },
+        "style": { "enum": ["card", "chip"] },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "href"],
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "href": { "type": "string", "minLength": 1 },
+              "kicker": { "type": "string" },
+              "detail": { "type": "string" },
+              "tone": { "$ref": "#/$defs/tone" },
+              "ok": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "code_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "text"],
+      "properties": {
+        "type": { "const": "code_block" },
+        "text": { "type": "string" },
+        "language": { "type": "string" },
+        "caption": { "type": "string" }
       }
     }
   }

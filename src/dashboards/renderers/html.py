@@ -18,8 +18,11 @@ from ..components import table as table_helpers
 from ..ir import (
     Callout,
     Chart,
+    CodeBlock,
     Dashboard,
     KPITile,
+    LinkGrid,
+    Pipeline,
     Section,
     StatusCard,
     Table,
@@ -117,6 +120,12 @@ def _render_component(c) -> str:
         return _callout(c)
     if isinstance(c, Chart):
         return _chart(c)
+    if isinstance(c, Pipeline):
+        return _pipeline(c)
+    if isinstance(c, LinkGrid):
+        return _link_grid(c)
+    if isinstance(c, CodeBlock):
+        return _code_block(c)
     return f"<!-- unknown component: {type(c).__name__} -->"
 
 
@@ -253,6 +262,93 @@ def _svg_for_chart(c: Chart) -> str:
 
     parts.append("</svg>")
     return "".join(parts)
+
+
+def _pipeline(c: Pipeline) -> str:
+    parts: List[str] = []
+    if c.caption:
+        parts.append(
+            f'<div class="pl-caption">{html.escape(c.caption)}</div>'
+        )
+    parts.append('<ol class="pipeline">')
+    n = len(c.stages)
+    for i, st in enumerate(c.stages):
+        detail = ""
+        if st.detail:
+            detail = (
+                f'<span class="pl-detail">{html.escape(st.detail)}</span>'
+            )
+        parts.append(
+            f'<li class="pl-stage state-{st.state}">'
+            f'<span class="pl-num">{i + 1:02d}</span>'
+            f'<span class="pl-value">{html.escape(str(st.value))}</span>'
+            f'<span class="pl-name">{html.escape(st.name)}</span>'
+            f"{detail}"
+            f"</li>"
+        )
+        if i < n - 1:
+            parts.append('<li class="pl-sep" aria-hidden="true">&rarr;</li>')
+    parts.append("</ol>")
+    return f'<div class="pl-wrap">{"".join(parts)}</div>'
+
+
+def _link_grid(c: LinkGrid) -> str:
+    parts: List[str] = []
+    if c.caption:
+        parts.append(
+            f'<div class="lg-caption">{html.escape(c.caption)}</div>'
+        )
+    klass = "lg-grid" if c.style == "card" else "lg-chips"
+    parts.append(f'<div class="{klass}">')
+    for it in c.items:
+        href = html.escape(it.href, quote=True)
+        if c.style == "card":
+            kicker = ""
+            if it.kicker:
+                kicker = (
+                    f'<span class="lg-kicker">{html.escape(it.kicker)}</span>'
+                )
+            detail = ""
+            if it.detail:
+                detail = f'<small>{html.escape(it.detail)}</small>'
+            parts.append(
+                f'<a class="lg-card tone-{it.tone}" href="{href}">'
+                f"{kicker}"
+                f'<strong>{html.escape(it.label)}</strong>'
+                f"{detail}"
+                f"</a>"
+            )
+        else:
+            ok_class = ""
+            badge = ""
+            if it.ok is True:
+                ok_class = " ok"
+                badge = '<span class="lg-badge">OK</span>'
+            elif it.ok is False:
+                ok_class = " missing"
+                badge = '<span class="lg-badge">MISSING</span>'
+            parts.append(
+                f'<a class="lg-chip{ok_class}" href="{href}">'
+                f"{html.escape(it.label)}"
+                f"{badge}"
+                f"</a>"
+            )
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def _code_block(c: CodeBlock) -> str:
+    lang = ""
+    if c.language:
+        lang = f' data-lang="{html.escape(c.language, quote=True)}"'
+    cap = ""
+    if c.caption:
+        cap = f'<div class="cb-caption">{html.escape(c.caption)}</div>'
+    body = html.escape(c.text or "")
+    return (
+        f'<div class="cb-wrap">{cap}'
+        f'<pre class="cb"{lang}>{body}</pre></div>'
+    )
 
 
 __all__ = ["render_html"]
