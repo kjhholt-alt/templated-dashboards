@@ -118,13 +118,26 @@ class Dashboard:
         headers: Sequence[str],
         rows: Iterable[Sequence[Any]],
         caption: Optional[str] = None,
+        cell_tones: Optional[Sequence[Sequence[Optional[str]]]] = None,
     ) -> "Dashboard":
+        """Render a table.
+
+        v0.3.0 ``cell_tones`` adds optional per-cell color hints. Shape is
+        a 2D array matching ``rows``; each cell is one of "good", "warn",
+        "bad", "neutral", or None for "no tone". Shorter rows padded with
+        None. HTML and Excel renderers color cells; Markdown ignores; PDF
+        inherits from HTML.
+        """
         self._require_section("table")
+        tones_list: Optional[List[List[Optional[str]]]] = None
+        if cell_tones is not None:
+            tones_list = [list(row) for row in cell_tones]
         self._current.add(
             ir_mod.Table(
                 headers=list(headers),
                 rows=[list(r) for r in rows],
                 caption=caption,
+                cell_tones=tones_list,
             )
         )
         return self
@@ -201,6 +214,56 @@ class Dashboard:
         self._require_section("code_block")
         self._current.add(
             ir_mod.CodeBlock(text=text, language=language, caption=caption)
+        )
+        return self
+
+    # ------------------------------------------------------------------
+    # v0.3.0 components
+    # ------------------------------------------------------------------
+    def cover_page(
+        self,
+        title: str,
+        *,
+        subtitle: Optional[str] = None,
+        prepared_for: Optional[str] = None,
+        prepared_by: Optional[str] = None,
+        version: Optional[str] = None,
+        logo_initials: Optional[str] = None,
+    ) -> "Dashboard":
+        """Add a CoverPage component. Typically placed in its own section
+        as the first element of a deliverable."""
+        self._require_section("cover_page")
+        self._current.add(
+            ir_mod.CoverPage(
+                title=title,
+                subtitle=subtitle,
+                prepared_for=prepared_for,
+                prepared_by=prepared_by,
+                version=version,
+                logo_initials=logo_initials,
+            )
+        )
+        return self
+
+    def roi_summary(
+        self,
+        *,
+        investment_usd: float,
+        monthly_recovery_usd: float,
+        annual_recovery_usd: float,
+        multiplier: str,
+        payback_months: float,
+    ) -> "Dashboard":
+        """Add an ROISummary banner."""
+        self._require_section("roi_summary")
+        self._current.add(
+            ir_mod.ROISummary(
+                investment_usd=investment_usd,
+                monthly_recovery_usd=monthly_recovery_usd,
+                annual_recovery_usd=annual_recovery_usd,
+                multiplier=multiplier,
+                payback_months=payback_months,
+            )
         )
         return self
 

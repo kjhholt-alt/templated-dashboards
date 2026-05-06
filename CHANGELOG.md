@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.3.0 — 2026-05-06
+
+### New components
+
+- **`cover_page`** — first-class deliverable cover. Big title + subtitle,
+  optional logo initials, prepared-for / prepared-by / version meta block.
+  Built for AI Ops audit deliverables and Pool Prospector postcards.
+  Renders in HTML (banded header card), Markdown (# title + key-value
+  block), Excel (top-of-sheet styled band), PDF (inherits HTML via the
+  new playwright path).
+- **`roi_summary`** — investment + monthly recovery + annual recovery +
+  multiplier (loud) + payback months. Replaces hand-rolled ROI callouts.
+  All four renderers support it.
+
+### New table feature
+
+- **`cell_tones`** — optional per-cell tone hints. Same shape as `rows`
+  (or sparser); each cell tagged `good`/`warn`/`bad`/`neutral` gets the
+  matching color treatment. HTML applies a `tone-*` class; Excel applies
+  a fill; Markdown ignores; PDF inherits from HTML. Backwards-compatible
+  for v0.2.0 callers (omit the param, no behaviour change).
+
+### New section layouts
+
+- **`kpi_grid_2col` / `kpi_grid_3col` / `kpi_grid_4col`** — print-aware
+  fixed-column KPI grids. Solves the v0.2.0 issue where Excel collapsed
+  KPI tiles to one cell wide regardless of `layout="grid"`. Now arranges
+  N tiles per row in both HTML (CSS grid) and Excel (column block math).
+
+### PDF renderer rewrite
+
+- Prefer **playwright (Chromium HTML to PDF)** for browser-grade fidelity.
+  Works on Windows once `python -m playwright install chromium` has been
+  run. Falls back to weasyprint (Linux/Mac), then to reportlab plain text
+  as a last resort. All three paths render the same Dashboard input so
+  callers don't care which backend won. Closes the showcase-audit pain
+  point of "drab Courier-mono PDF on Windows."
+
+### Tests
+
+- 21 new tests in `tests/test_v030_features.py` covering all five gaps
+  across the relevant renderers + IR validation + backwards compat.
+- All 40 existing v0.2.0 tests still pass.
+
+### Notes
+
+- All additions are additive; v0.2.0 callers don't need to change.
+- JSON Schema (`spec/schema/v1/dashboard.json`) extended for cover_page,
+  roi_summary, table.cell_tones, and the new section layout literals.
+
+---
+
 ## 0.2.0 — 2026-05-05
 
 ### New components for war-room rebuild

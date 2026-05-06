@@ -20,7 +20,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 Tone = Literal["good", "warn", "bad", "neutral"]
 Theme = Literal["palantir", "light"]
-Layout = Literal["stack", "grid"]
+Layout = Literal[
+    "stack",
+    "grid",
+    # v0.3.0: print-aware fixed-column KPI grids. Excel renderer arranges
+    # KPI tiles into N-wide rows instead of collapsing to single-cell-wide.
+    "kpi_grid_2col",
+    "kpi_grid_3col",
+    "kpi_grid_4col",
+]
 ChartKind = Literal["bar", "line", "sparkline"]
 
 
@@ -53,6 +61,10 @@ class Table(_Strict):
     headers: List[str]
     rows: List[List[Union[str, float, int, None]]]
     caption: Optional[str] = None
+    # v0.3.0: per-cell tone hints. Same shape as ``rows`` (or shorter rows
+    # padded with None). Each entry is one of Tone or None for "no tone".
+    # HTML/Excel renderers color the cell; markdown ignores; PDF inherits HTML.
+    cell_tones: Optional[List[List[Optional[Tone]]]] = None
 
 
 class TimelineEvent(_Strict):
@@ -140,8 +152,57 @@ class CodeBlock(_Strict):
     caption: Optional[str] = None
 
 
+# ---------------------------------------------------------------------------
+# v0.3.0 components
+# ---------------------------------------------------------------------------
+
+
+class CoverPage(_Strict):
+    """Cover page for a deliverable: big title, subtitle, prepared-for + by.
+
+    Renders as the first visual element. HTML produces a banded header
+    block; Markdown produces a # title + key-value lines; Excel produces
+    a styled top-of-sheet header band; PDF inherits via the HTML path.
+    """
+
+    type: Literal["cover_page"] = "cover_page"
+    title: str
+    subtitle: Optional[str] = None
+    prepared_for: Optional[str] = None  # e.g. "Acme Corp -- Sarah Lee"
+    prepared_by: Optional[str] = None  # e.g. "BuildKit Operator -- 2026-05-06"
+    version: Optional[str] = None  # version stamp, e.g. "v1.0.0"
+    logo_initials: Optional[str] = None  # text-only logo fallback (1-3 chars)
+
+
+class ROISummary(_Strict):
+    """ROI summary banner. Investment + recovery + multiplier + payback.
+
+    Renders as a banded callout with the multiplier emphasized. Replaces
+    the hand-rolled "ROI summary" callout in audit deliverables.
+    """
+
+    type: Literal["roi_summary"] = "roi_summary"
+    investment_usd: float
+    monthly_recovery_usd: float
+    annual_recovery_usd: float
+    multiplier: str  # e.g. "44x"
+    payback_months: float
+
+
 Component = Annotated[
-    Union[StatusCard, KPITile, Table, Timeline, Callout, Chart, Pipeline, LinkGrid, CodeBlock],
+    Union[
+        StatusCard,
+        KPITile,
+        Table,
+        Timeline,
+        Callout,
+        Chart,
+        Pipeline,
+        LinkGrid,
+        CodeBlock,
+        CoverPage,
+        ROISummary,
+    ],
     Field(discriminator="type"),
 ]
 

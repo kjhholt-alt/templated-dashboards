@@ -26,7 +26,15 @@
       "properties": {
         "title": { "type": "string", "minLength": 1 },
         "subtitle": { "type": "string" },
-        "layout": { "enum": ["stack", "grid"] },
+        "layout": {
+          "enum": [
+            "stack",
+            "grid",
+            "kpi_grid_2col",
+            "kpi_grid_3col",
+            "kpi_grid_4col"
+          ]
+        },
         "components": {
           "type": "array",
           "minItems": 1,
@@ -44,7 +52,9 @@
         { "$ref": "#/$defs/chart" },
         { "$ref": "#/$defs/pipeline" },
         { "$ref": "#/$defs/link_grid" },
-        { "$ref": "#/$defs/code_block" }
+        { "$ref": "#/$defs/code_block" },
+        { "$ref": "#/$defs/cover_page" },
+        { "$ref": "#/$defs/roi_summary" }
       ]
     },
     "status_card": {
@@ -87,6 +97,18 @@
           "items": {
             "type": "array",
             "items": { "type": ["string", "number", "null"] }
+          }
+        },
+        "cell_tones": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "$ref": "#/$defs/tone" },
+                { "type": "null" }
+              ]
+            }
           }
         }
       }
@@ -211,6 +233,40 @@
         "text": { "type": "string" },
         "language": { "type": "string" },
         "caption": { "type": "string" }
+      }
+    },
+    "cover_page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "title"],
+      "properties": {
+        "type": { "const": "cover_page" },
+        "title": { "type": "string", "minLength": 1 },
+        "subtitle": { "type": "string" },
+        "prepared_for": { "type": "string" },
+        "prepared_by": { "type": "string" },
+        "version": { "type": "string" },
+        "logo_initials": { "type": "string", "maxLength": 4 }
+      }
+    },
+    "roi_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "investment_usd",
+        "monthly_recovery_usd",
+        "annual_recovery_usd",
+        "multiplier",
+        "payback_months"
+      ],
+      "properties": {
+        "type": { "const": "roi_summary" },
+        "investment_usd": { "type": "number" },
+        "monthly_recovery_usd": { "type": "number" },
+        "annual_recovery_usd": { "type": "number" },
+        "multiplier": { "type": "string", "minLength": 1 },
+        "payback_months": { "type": "number" }
       }
     }
   }
